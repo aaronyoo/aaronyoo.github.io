@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="en-US">
+<head>
+  <meta http-equiv="content-type" content="text/html; charset=UTF-8" />
+  <meta name="generator" content="Madoko, version 1.2.3" />
+  <meta name="viewport" content="initial-scale=1.0" />
+  <title>Understanding &quot;Out of Thin Air&quot; Values with C++11 Relaxed Atomics</title>
+  <style type="text/css"  class="link">
+  /*# sourceURL=madoko.css */
+  
+  .madoko .toc>.tocblock .tocblock .tocblock {
+    margin-left: 2.25em;
+  }
+  .madoko .toc>.tocblock .tocblock {
+    margin-left: 1.5em;
+  }
+  .madoko .toc-contents>.tocblock>.tocitem {
+    font-weight: bold;
+  }
+  .madoko .toc {
+    margin-top: 1em;
+  }
+  .madoko p.para-continue {
+    margin-bottom: 0pt;
+  }
+  .madoko .para-block+p {
+    margin-top: 0pt;
+  }
+  .madoko ul.para-block, .madoko ol.para-block {
+    margin-top: 0pt;
+    margin-bottom: 0pt;
+  }
+  .madoko ul.para-end, .madoko ol.para-end {
+    margin-bottom: 1em;
+  }
+  .madoko dl {
+    margin-left: 0em;
+  }
+  .madoko blockquote {
+    font-style: italic;
+  }
+  .madoko a.localref {
+    text-decoration: none;
+  }
+  .madoko a.localref:hover {
+    text-decoration: underline;
+  }
+  .madoko .footnotes {
+    font-size: smaller;
+    margin-top: 2em;
+  }
+  .madoko .footnotes hr {
+    width: 50%;
+    text-align: left;
+  }
+  .madoko .footnote {
+    margin-left: 1em;
+  }
+  .madoko .footnote-before {
+    margin-left: -1em;
+    width: 1em;
+    display: inline-block;
+  }
+  .madoko .align-center, .madoko .align-center>p {
+    text-align: center !important;
+  }
+  .madoko .align-center pre {
+    text-align: left;
+  }
+  .madoko .align-center>* {
+    margin-left: auto !important;
+    margin-right: auto !important;
+  }
+  .madoko .align-left, .madoko .align-left>p {
+    text-align: left !important;
+  }
+  .madoko .align-left>* {
+    margin-left: 0pt !important;
+    margin-right: auto !important;
+  }
+  .madoko .align-right, .madoko .align-right>p {
+    text-align: right !important;
+  }
+  .madoko .align-right>* {
+    margin-left: auto !important;
+    margin-right: 0pt !important;
+  }
+  .madoko .align-center>table,
+  .madoko .align-left>table,
+  .madoko .align-right>table {
+    text-align: left !important;
+  }
+  .madoko .equation-before {
+    float: right;
+  }
+  .madoko .bibitem {
+    font-size: smaller;
+  }
+  .madoko .bibsearch {
+    font-size: x-small;
+    text-decoration:none;
+    color: black;
+    font-family: "Segoe UI Symbol", Symbola, serif;
+  }
+  .madoko .block, .madoko .figure, .madoko .bibitem, .madoko .equation, .madoko div.math {
+    margin-top: 1ex;
+    margin-bottom: 1ex;
+  }
+  .madoko .figure {
+    padding: 0.5em;
+    margin-left: 0pt;
+    margin-right: 0pt;
+  }
+  .madoko .hidden {
+    display: none;
+  }
+  .madoko .invisible {
+    visibility: hidden;
+  }
+  .madoko.preview .invisible {
+    visibility: visible;
+    opacity: 0.5;
+  }
+  .madoko code.code, .madoko span.code {
+    white-space: pre-wrap;
+  }
+  .madoko hr, hr.madoko {
+    border: none;
+    border-bottom: black solid 1px;
+    margin-bottom: 0.5ex;
+  }
+  .madoko .framed>*:first-child {
+    margin-top: 0pt;
+  }
+  .madoko .framed>*:last-child {
+    margin-bottom: 0pt;
+  }
+  .madoko ul.list-style-type-dash {
+      list-style-type: none !important;
+  }
+  .madoko ul.list-style-type-dash > li:before {
+      content: "\2013";
+      position: absolute;
+      margin-left: -1em;
+  }
+  .madoko table.madoko {
+    border-collapse: collapse;
+  }
+  .madoko td, .madoko th {
+    padding: 0ex 0.5ex;
+    margin: 0pt;
+    vertical-align: top;
+  }
+  .madoko .cell-border-left {
+    border-left: 1px solid black;
+  }
+  .madoko .cell-border-right {
+    border-right: 1px solid black;
+  }
+  .madoko thead>tr:first-child>.cell-line,
+  .madoko tbody:first-child>tr:first-child>.cell-line {
+    border-top: 1px solid black;
+    border-bottom: none;
+  }
+  .madoko .cell-line, .madoko .cell-double-line {
+    border-bottom: 1px solid black;
+    border-top: none;
+  }
+  .madoko .cell-double-line {
+    border-top: 1px solid black;
+    padding-top: 1.5px !important;
+  }
+  .madoko .input-mathpre .MathJax_Display {
+    text-align: left !important;
+  }
+  .madoko div.input-mathpre {
+    text-align: left;
+    margin-top: 1.5ex;
+    margin-bottom: 1ex;
+  }
+  .madoko .math-rendering {
+    text-align: left;
+    white-space: pre;
+    color: gray;
+  }
+  .madoko .mathdisplay {
+    text-align: center;
+  }
+  .madoko span.math-rendering {
+    display:inline-block;
+    width:8em;
+    overflow-x:auto;
+    font-size:70%;
+  }
+  .madoko span.math-rendering::-webkit-scrollbar {
+    width:4px;
+  }
+  .madoko .pretty table {
+    border-collapse: collapse;
+  }
+  .madoko .pretty td {
+    padding: 0em;
+  }
+  .madoko .pretty td.empty {
+    min-width: 1.5ex;
+  }
+  .madoko .pretty td.expander {
+    width: 100em;
+  }
+  body.madoko, .madoko .serif {
+    font-family: Cambria,"Times New Roman","Liberation Serif","Times",serif;
+  }
+  .madoko .sans-serif {
+    font-family: "Calibri", "Optima", sans-serif;
+  }
+  .madoko .symbol {
+    font-family: "Segoe UI Symbol", Symbola, serif;
+  }
+  body.madoko {
+    -webkit-text-size-adjust: 100%;       
+    text-rendering: optimizeLegibility;
+  }
+  body.madoko {
+    max-width: 88ex; 
+    margin: 1em auto;
+    padding: 0em 2em;
+  }
+  body.preview.madoko {
+    padding: 0em 1em;
+  }
+  .madoko p {
+    text-align: justify;
+  }
+  .madoko h1, .madoko h2, .madoko h3, .madoko h4 {
+    margin-top: 1.22em;
+    margin-bottom: 1ex;
+  }
+  .madoko h1+p, .madoko h2+p, .madoko h3+p, .madoko h4+p, .madoko h5+p  {
+    margin-top: 1ex;
+  }
+  .madoko h5, .madoko h6 {
+    margin-top: 1ex;
+    font-size: 1em;
+  }
+  .madoko h5 {
+    margin-bottom: 0.5ex;
+  }
+  .madoko h5 + p {
+    margin-top: 0.5ex;
+  }
+  .madoko h6 {
+    margin-bottom: 0pt;
+  }
+  .madoko h6 + p {
+    margin-top: 0pt;
+  }
+  .madoko pre, .madoko code, .madoko kbd, .madoko samp, .madoko tt,
+  .madoko .monospace, .madoko .token-indent, .madoko .reveal pre, .madoko .reveal code, .madoko .email {
+    font-family: Consolas,"Andale Mono WT","Andale Mono",Lucida Console,Monaco,monospace,monospace;
+    font-size: 0.85em;
+  }
+  .madoko pre code, .madoko .token-indent {
+    font-size: 0.95em;
+  }
+  .madoko pre code {
+    font-family: inherit !important;
+  }
+  .madoko ol.linenums li {
+    background-color: white;
+    list-style-type: decimal;
+  }
+  .madoko .remote {
+    background-color: #F0FFF0;
+  }
+  .madoko .remote + * {
+    margin-top: 0pt;
+  }
+  @media print {
+    body.madoko {
+      font-size: 10pt;
+    }
+    @page {
+      margin: 1in 1.5in;
+    }
+  }
+  @media only screen and (max-device-width:1024px) {
+    body.madoko {
+      padding: 0em 0.5em;
+    }
+    .madoko li {
+      text-align: left;
+    }
+  }
+  
+    </style>
+  
+  </head>
+<body class="madoko">
+
+<div class="body madoko" style="line-adjust:0">
+
+<p class="p noindent para-continue" data-line="5"><span data-line="5"></span><br>
+<span data-line="5"></span>
+<span data-line="6"></span><br>
+<span data-line="6"></span>
+<span data-line="7"></span><br>
+<span data-line="7"></span>
+</p>
+<div class="titleblock align-center para-block" data-line="9" style="text-align:center;line-adjust:0">
+<div class="titleheader align-center" data-line="9" style="text-align:center;line-adjust:0">
+<div class="title para-block" data-line="9" style="font-size:xx-large;font-weight:bold;margin-bottom:0.5ex;line-adjust:0"><span data-line="9"></span>Understanding &#8220;Out of Thin Air&#8221; Values with C++11 Relaxed Atomics</div>
+<div class="titlenote para-block" data-line="12" style="line-adjust:0"><span data-line="12"></span>2023-09-04</div></div></div>
+<blockquote data-line="11">
+
+<p class="p noindent" data-line="11"><span data-line="11"></span>Relaxed atomics, don<span data-line="11"></span>&#39;<span data-line="11"></span>t go there <span data-line="11"></span><br>
+<span data-line="11"></span>
+<span data-line="12"></span>&#8195;<span data-line="12"></span>&#8195;<span data-line="12"></span> <span data-line="12"></span>&#8211;<span data-line="12"></span> Herb Sutter, Atomic Weapons<span data-line="12"></span>&nbsp;<span class="citations" style="target-element:bibitem">[<a href="#herbsutter" class="bibref localref" style="target-element:bibitem"><span class="cite-number">1</span></a>]</span><span data-line="12"></span>
+</p></blockquote><h3 id="sec-introduction" class="clearnum h2" data-line="14" data-heading-depth="2" style="display:block"><span data-line="14"></span>Introduction</h3>
+<p class="p noindent" data-line="16"><span data-line="16"></span>Although we take it for granted today (2023), there was a time during the proliferation of multicore CPUs that programming language designers had to define so-called “memory models” in order to adequately constrain the chaos of multicore programming. The primary job of these memory models was to define what is supposed to (or allowed to) happen when using shared memory between multiple threads. Before this, the behavior of any multithreaded code was technically undefined, though much of it existed in practice.
+</p>
+<p class="p indent" data-line="18"><span data-line="18"></span>For C++, the C++11 standard was first to define a memory model and introduce the concept of a thread formally—both the C++98 and C++03 standards made no reference to threads or shared memory. Yet in all this effort, there emerged a truth that seemed true then and rings truer now: to define a memory model is no easy task. The C++11 standard attempted to define many tried-and-true synchronization mechanisms such as atomics and mutexes, but we venture today to find precisely what is “less” well defined; and what we find, at the edge of the cover of the C++11 standard, is relaxed atomics.
+</p><h3 id="sec-relaxed-atomics" class="clearnum h2" data-line="20" data-heading-depth="2" style="display:block"><span data-line="20"></span>Relaxed Atomics</h3>
+<p class="p noindent" data-line="22"><span data-line="22"></span>Relaxed atomics are non synchronizing atomics, meaning they impose no ordering requirements on writes to different atomic variables. Consider the code:
+</p>
+<pre class="para-block pre-fenced pre-fenced3 language-cpp lang-cpp cpp colorized" data-line="24" data-line-first="25" style="display:block"><code data-line="25"><span style="color:navy">std::</span>atomic&lt;<span style="color:teal">int</span>&gt; x = <span class="constant" style="color:purple">0</span>;
+<span style="color:navy">std::</span>atomic&lt;<span style="color:teal">int</span>&gt; y = <span class="constant" style="color:purple">0</span>;
+
+x.store(<span class="constant" style="color:purple">1</span>, <span style="color:navy">std::</span>memory_order_relaxed);
+y.store(<span class="constant" style="color:purple">1</span>, <span style="color:navy">std::</span>memory_order_relaxed);</code></pre>
+<p class="p noindent para-continued" data-line="32"><span data-line="32"></span>We create two atomic integers <span data-line="32"></span><code class="code code1">x</code><span data-line="32"></span> and <span data-line="32"></span><code class="code code1">y</code><span data-line="32"></span> and we store to <span data-line="32"></span><code class="code code1">x</code><span data-line="32"></span> then store to <span data-line="32"></span><code class="code code1">y</code><span data-line="32"></span>, providing <span data-line="32"></span><code class="code code1">std::memory_order_relaxed</code><span data-line="32"></span> convey our desire to use a relaxed memory ordering. 
+</p>
+<p class="p indent" data-line="34"><span data-line="34"></span>The key to understanding memory ordering on atomics, is that it really only affects how other threads see stores to the atomic variables. If the code above is executing on Thread 1, then Thread 1 would first see <span data-line="34"></span><code class="code code1">x = 1</code><span data-line="34"></span> then <span data-line="34"></span><code class="code code1">y = 1</code><span data-line="34"></span> (assuming no compiler reordering). But let’s say we had another thread named Thread 2 and we ask “what is Thread 2 allowed to see”? The answer to this question depends entirely on the memory ordering we specify. Since we used <span data-line="34"></span><code class="code code1">std::memory_order_relaxed</code><span data-line="34"></span>, there is no ordering requirements between the stores to <span data-line="34"></span><code class="code code1">x</code><span data-line="34"></span> and <span data-line="34"></span><code class="code code1">y</code><span data-line="34"></span>, so it is possible for Thread 2 to see <span data-line="34"></span><code class="code code1">y = 1</code><span data-line="34"></span> then <span data-line="34"></span><code class="code code1">x = 1</code><span data-line="34"></span>. The only ordering that is enforced in <span data-line="34"></span><code class="code code1">std::memory_order_relaxed</code><span data-line="34"></span> is on stores to the same variable. So if on Thread 1 we had:
+</p>
+<pre class="para-block pre-fenced pre-fenced3 language-cpp lang-cpp cpp colorized" data-line="36" data-line-first="37" style="display:block"><code data-line="37"><span style="color:darkgreen">// Thread 1</span>
+x.store(<span class="constant" style="color:purple">1</span>, <span style="color:navy">std::</span>memory_order_relaxed);
+x.store(<span class="constant" style="color:purple">2</span>, <span style="color:navy">std::</span>memory_order_relaxed);</code></pre>
+<p class="p noindent para-continued" data-line="41"><span data-line="41"></span>Then Thread 2 would be guaranteed to see <span data-line="41"></span><code class="code code1">x = 1</code><span data-line="41"></span> before <span data-line="41"></span><code class="code code1">x = 2</code><span data-line="41"></span> because they are stores to the same atomic variable.
+</p>
+<p class="p indent" data-line="43"><span data-line="43"></span>As an aside, the requirement of total ordering on atomic stores to the same variable is essentially the bare minimum requirement for sanity. If we did not have this guarantee and Thread 2 could see <span data-line="43"></span><code class="code code1">x = 2</code><span data-line="43"></span> first then <span data-line="43"></span><code class="code code1">x = 1</code><span data-line="43"></span>, Thread 1 and Thread 2 might end up disagreeing on the state of the program in the end. Thread 1 would think that <span data-line="43"></span><code class="code code1">x = 2</code><span data-line="43"></span> and Thread 2 might think that <span data-line="43"></span><code class="code code1">x = 1</code><span data-line="43"></span>. Thus, even with <span data-line="43"></span><code class="code code1">std::memory_order_relaxed</code><span data-line="43"></span>, we still have this basic rule of total ordering on stores to the same atomic variable to prevent threads from diverging in their view of the state of the program.
+</p><h3 id="sec-out-of-thin-air-values" class="clearnum h2" data-line="45" data-heading-depth="2" style="display:block"><span data-line="45"></span>Out of Thin Air Values</h3>
+<p class="p noindent" data-line="47"><span data-line="47"></span>We have established that relaxed stores to different atomic variables can be observed in a different order by another thread; but we have not yet considered some more challenging program executions. Here is one:
+</p>
+<pre class="para-block pre-fenced pre-fenced3 language-cpp lang-cpp cpp colorized" data-line="49" data-line-first="50" style="display:block"><code data-line="50"><span style="color:navy">std::</span>atomic&lt;<span style="color:teal">int</span>&gt; x = <span class="constant" style="color:purple">0</span>;
+<span style="color:navy">std::</span>atomic&lt;<span style="color:teal">int</span>&gt; y = <span class="constant" style="color:purple">0</span>;
+
+<span style="color:darkgreen">// Thread 1</span>
+<span style="color:teal">int</span> r1 = y.load(<span style="color:navy">std::</span>memory_order_relaxed);  <span style="color:darkgreen">// A</span>
+x.store(r1, <span style="color:navy">std::</span>memory_order_relaxed);  <span style="color:darkgreen">// B</span>
+
+<span style="color:darkgreen">// Thread 2</span>
+<span style="color:teal">int</span> r2 = x.load(<span style="color:navy">std::</span>memory_order_relaxed);  <span style="color:darkgreen">// C</span>
+y.store(r2, <span style="color:navy">std::</span>memory_order_relaxed);  <span style="color:darkgreen">// D</span></code></pre>
+<p class="p noindent para-continued" data-line="62"><span data-line="62"></span>This program does something akin to a swap of two atomic variables. Thread 1 loads <span data-line="62"></span><code class="code code1">y</code><span data-line="62"></span> into a thread local variable <span data-line="62"></span><code class="code code1">r1</code><span data-line="62"></span>, then stores it into <span data-line="62"></span><code class="code code1">x</code><span data-line="62"></span> while Thread 2 does the opposite. We can convince ourselves informally that at the end of this execution we will have <span data-line="62"></span><code class="code code1">r1 = r2 = 0</code><span data-line="62"></span> since <span data-line="62"></span><code class="code code1">x</code><span data-line="62"></span> and <span data-line="62"></span><code class="code code1">y</code><span data-line="62"></span> both start out as <span data-line="62"></span><code class="code code1">0</code><span data-line="62"></span> and we don’t do any operations other than loads and stores. But there also is another, more nonsensical, end state of this program that can be justified by memory ordering rules: <span data-line="62"></span><code class="code code1">r1 = r2 = 42</code><span data-line="62"></span>.
+</p>
+<p class="p indent" data-line="64"><span data-line="64"></span>The result <span data-line="64"></span><code class="code code1">r1 = r2 = 42</code><span data-line="64"></span> is known as an “out-of-thin-air” value or result because as we will see, the value <span data-line="64"></span><code class="code code1">42</code><span data-line="64"></span> seems to have emerged out of thin air. Let’s say that the compiler or hardware speculated that the load into <span data-line="64"></span><code class="code code1">r2</code><span data-line="64"></span> would be <span data-line="64"></span><code class="code code1">42</code><span data-line="64"></span> (line <span data-line="64"></span><code class="code code1">C</code><span data-line="64"></span>). This would mean that <span data-line="64"></span><code class="code code1">y = 42</code><span data-line="64"></span> on line <span data-line="64"></span><code class="code code1">D</code><span data-line="64"></span>, which could mean <span data-line="64"></span><code class="code code1">r1 = 42</code><span data-line="64"></span> on line <span data-line="64"></span><code class="code code1">A</code><span data-line="64"></span> and <span data-line="64"></span><code class="code code1">x = 42</code><span data-line="64"></span> on line <span data-line="64"></span><code class="code code1">B</code><span data-line="64"></span>. Now here comes the tricky part: because <span data-line="64"></span><code class="code code1">x = 42</code><span data-line="64"></span> on line <span data-line="64"></span><code class="code code1">B</code><span data-line="64"></span>, the hardware can actually justify the load of <span data-line="64"></span><code class="code code1">42</code><span data-line="64"></span> on line <span data-line="64"></span><code class="code code1">C</code><span data-line="64"></span>, which confirms the initial speculation. In fact, <span data-line="64"></span><code class="code code1">42</code><span data-line="64"></span> is just an arbitrary number and we could use any other number in this same argument.
+</p>
+<p class="p indent" data-line="66"><span data-line="66"></span>The argument for <span data-line="66"></span>&#8220;out-of-thin-air&#8221;<span data-line="66"></span> values relies heavily on circular reasoning which can draw some skepticism. One common retort is to observe that <span data-line="66"></span><code class="code code1">C -&gt; A -&gt; B -&gt; C</code><span data-line="66"></span> cannot happen because <span data-line="66"></span><code class="code code1">C</code><span data-line="66"></span> cannot happen both before and after <span data-line="66"></span><code class="code code1">A</code><span data-line="66"></span> and <span data-line="66"></span><code class="code code1">B</code><span data-line="66"></span>. This view, however, falls short when you consider both that the initial load is speculative and that we need to be careful about trying to define a total order of execution when dealing with relaxed atomics. In this example it may not do us harm, but in general it is dangerous to constrain relaxed atomics to a notion of total order between two threads. As we saw earlier, threads can easily disagree about the order of stores.
+</p>
+<p class="p indent" data-line="68"><span data-line="68"></span>While there are a couple of proposed solutions to preventing out-of-thin-air results from being justifiable<span data-line="68"></span>&nbsp;<span class="citations" style="target-element:bibitem">[<a href="#boehm" class="bibref localref" style="target-element:bibitem"><span class="cite-number">2</span></a>]</span><span data-line="68"></span>, C++14 straightforwardly outlawed out-of-thin-air results with the following wording:
+</p>
+<blockquote data-line="70">
+
+<p class="p noindent" data-line="70"><span data-line="70"></span>Even with relaxed memory model, out-of-thin-air values are not allowed to circularly depend on their own computations<span data-line="70"></span>&#8230;<span data-line="70"></span> <span data-line="70"></span><br>
+<span data-line="70"></span>
+<span data-line="71"></span>&#8195;<span data-line="71"></span>&#8195;<span data-line="71"></span> <span data-line="71"></span>&#8211;<span data-line="71"></span> C++14
+</p></blockquote>
+<p class="p noindent" data-line="73"><span data-line="73"></span>This effectively prohibits the type of “out-of-thin-air” values previously discussed, though it does so in an ad-hoc way, not from first principles.
+</p><h2 id="sec-references" class="clearnum h1" data-line="76" data-heading-depth="1" style="display:block"><span data-line="76"></span>References</h2>
+<div class="bibliography" data-hanging-indent="0" data-line="78" style="bibstyle:madoko-numeric">
+
+<div id="herbsutter" class="bibitem" data-cite-label="1" data-line="80" style="text-indent:-2rem;margin-left:2rem"><span data-line="81"></span><span class="bibitem-before" style="padding-right:0.5em;display: inline-block; width:calc(2rem - 0.5em);display: inline-block; text-align:right;font-size:90%"></span><span data-line="81"></span>[1]<span data-line="81"></span> <span data-line="81"></span><a href="https://www.youtube.com/watch?v=KeLBd2EJLOU" class="texturl monospace">https://&#8203;www.&#8203;youtube.&#8203;com/&#8203;watch?&#8203;v=&#8203;KeLBd2EJLOU</a><span data-line="81"></span>&nbsp;<a href="http://www.bing.com/search?q=" class="bibsearch">&#128270;</a></div>
+<div id="boehm" class="bibitem" data-cite-label="2" data-line="84" style="text-indent:-2rem;margin-left:2rem"><span data-line="85"></span><span class="bibitem-before" style="padding-right:0.5em;display: inline-block; width:calc(2rem - 0.5em);display: inline-block; text-align:right;font-size:90%"></span><span data-line="85"></span>[2]<span data-line="85"></span> <span data-line="85"></span><a href="https://static.googleusercontent.com/media/research.google.com/en//pubs/archive/42967.pdf" class="texturl monospace">https://&#8203;static.&#8203;googleusercontent.&#8203;com/&#8203;media/&#8203;research.&#8203;google.&#8203;com/&#8203;en//&#8203;pubs/&#8203;archive/&#8203;42967.&#8203;pdf</a><span data-line="85"></span>&nbsp;<a href="http://www.bing.com/search?q=" class="bibsearch">&#128270;</a></div></div>
+<p class="p noindent" data-line="90"><span data-line="90"></span><br>
+<span data-line="90"></span>
+<span data-line="91"></span><br>
+<span data-line="91"></span>
+<span data-line="92"></span><br>
+<span data-line="92"></span>
+</p><span data-line=""></span></div>
+</body>
+
+</html>

@@ -1,0 +1,92 @@
+Title       : Understanding "Out of Thin Air" Values with C++11 Relaxed Atomics
+Title Note  : 2023-09-04
+BibTeX      : False
+
+&br;
+&br;
+&br;
+
+[TITLE]
+
+> Relaxed atomics, don't go there &br;
+> &emsp;&emsp; -- Herb Sutter, Atomic Weapons [@HerbSutter]
+
+## Introduction {-}
+
+Although we take it for granted today (2023), there was a time during the proliferation of multicore CPUs that programming language designers had to define so-called “memory models” in order to adequately constrain the chaos of multicore programming. The primary job of these memory models was to define what is supposed to (or allowed to) happen when using shared memory between multiple threads. Before this, the behavior of any multithreaded code was technically undefined, though much of it existed in practice.
+
+For C++, the C++11 standard was first to define a memory model and introduce the concept of a thread formally—both the C++98 and C++03 standards made no reference to threads or shared memory. Yet in all this effort, there emerged a truth that seemed true then and rings truer now: to define a memory model is no easy task. The C++11 standard attempted to define many tried-and-true synchronization mechanisms such as atomics and mutexes, but we venture today to find precisely what is “less” well defined; and what we find, at the edge of the cover of the C++11 standard, is relaxed atomics.
+
+## Relaxed Atomics {-}
+
+Relaxed atomics are non synchronizing atomics, meaning they impose no ordering requirements on writes to different atomic variables. Consider the code:
+
+``` cpp
+std::atomic<int> x = 0;
+std::atomic<int> y = 0;
+
+x.store(1, std::memory_order_relaxed);
+y.store(1, std::memory_order_relaxed);
+```
+
+We create two atomic integers `x` and `y` and we store to `x` then store to `y`, providing `std::memory_order_relaxed` convey our desire to use a relaxed memory ordering. 
+
+The key to understanding memory ordering on atomics, is that it really only affects how other threads see stores to the atomic variables. If the code above is executing on Thread 1, then Thread 1 would first see `x = 1` then `y = 1` (assuming no compiler reordering). But let’s say we had another thread named Thread 2 and we ask “what is Thread 2 allowed to see”? The answer to this question depends entirely on the memory ordering we specify. Since we used `std::memory_order_relaxed`, there is no ordering requirements between the stores to `x` and `y`, so it is possible for Thread 2 to see `y = 1` then `x = 1`. The only ordering that is enforced in `std::memory_order_relaxed` is on stores to the same variable. So if on Thread 1 we had:
+
+``` cpp
+// Thread 1
+x.store(1, std::memory_order_relaxed);
+x.store(2, std::memory_order_relaxed);
+```
+Then Thread 2 would be guaranteed to see `x = 1` before `x = 2` because they are stores to the same atomic variable.
+
+As an aside, the requirement of total ordering on atomic stores to the same variable is essentially the bare minimum requirement for sanity. If we did not have this guarantee and Thread 2 could see `x = 2` first then `x = 1`, Thread 1 and Thread 2 might end up disagreeing on the state of the program in the end. Thread 1 would think that `x = 2` and Thread 2 might think that `x = 1`. Thus, even with `std::memory_order_relaxed`, we still have this basic rule of total ordering on stores to the same atomic variable to prevent threads from diverging in their view of the state of the program.
+
+## Out of Thin Air Values {-}
+
+We have established that relaxed stores to different atomic variables can be observed in a different order by another thread; but we have not yet considered some more challenging program executions. Here is one:
+
+``` cpp
+std::atomic<int> x = 0;
+std::atomic<int> y = 0;
+
+// Thread 1
+int r1 = y.load(std::memory_order_relaxed);  // A
+x.store(r1, std::memory_order_relaxed);  // B
+
+// Thread 2
+int r2 = x.load(std::memory_order_relaxed);  // C
+y.store(r2, std::memory_order_relaxed);  // D
+```
+
+This program does something akin to a swap of two atomic variables. Thread 1 loads `y` into a thread local variable `r1`, then stores it into `x` while Thread 2 does the opposite. We can convince ourselves informally that at the end of this execution we will have `r1 = r2 = 0` since `x` and `y` both start out as `0` and we don’t do any operations other than loads and stores. But there also is another, more nonsensical, end state of this program that can be justified by memory ordering rules: `r1 = r2 = 42`.
+
+The result `r1 = r2 = 42` is known as an “out-of-thin-air” value or result because as we will see, the value `42` seems to have emerged out of thin air. Let’s say that the compiler or hardware speculated that the load into `r2` would be `42` (line `C`). This would mean that `y = 42` on line `D`, which could mean `r1 = 42` on line `A` and `x = 42` on line `B`. Now here comes the tricky part: because `x = 42` on line `B`, the hardware can actually justify the load of `42` on line `C`, which confirms the initial speculation. In fact, `42` is just an arbitrary number and we could use any other number in this same argument.
+
+The argument for "out-of-thin-air" values relies heavily on circular reasoning which can draw some skepticism. One common retort is to observe that `C -> A -> B -> C` cannot happen because `C` cannot happen both before and after `A` and `B`. This view, however, falls short when you consider both that the initial load is speculative and that we need to be careful about trying to define a total order of execution when dealing with relaxed atomics. In this example it may not do us harm, but in general it is dangerous to constrain relaxed atomics to a notion of total order between two threads. As we saw earlier, threads can easily disagree about the order of stores.
+
+While there are a couple of proposed solutions to preventing out-of-thin-air results from being justifiable [@Boehm], C++14 straightforwardly outlawed out-of-thin-air results with the following wording:
+
+> Even with relaxed memory model, out-of-thin-air values are not allowed to circularly depend on their own computations... &br;
+> &emsp;&emsp; -- C++14
+
+This effectively prohibits the type of “out-of-thin-air” values previously discussed, though it does so in an ad-hoc way, not from first principles.
+
+
+# References {-}
+
+~ Bibliography { caption:"00" }
+
+~~ Bibitem { #HerbSutter }
+[1] <https://www.youtube.com/watch?v=KeLBd2EJLOU>
+~~
+
+~~ Bibitem { #Boehm }
+[2] <https://static.googleusercontent.com/media/research.google.com/en//pubs/archive/42967.pdf>
+~~
+
+~
+
+&br;
+&br;
+&br;
